@@ -1,6 +1,6 @@
 import { Context, Messenger, ParseMode } from './interfaces';
 import cache from './cache';
-import * as llm from './addons/llm';
+// import * as llm from './addons/llm';
 import * as db from './db';
 import { strictEscape as esc, reply, sendMessage } from './middleware';
 import { ISupportee } from './db';
@@ -72,14 +72,14 @@ async function autoReply(ctx: Context): Promise<boolean> {
     }
   }
 
-  // Fallback to LLM response if enabled
-  if (use_llm) {
-    const response = await llm.getResponseFromLLM(ctx);
-    if (response !== null) {
-      reply(ctx, createAutoReplyMessage(response, ctx));
-      return true;
-    }
-  }
+  // // Fallback to LLM response if enabled
+  // if (use_llm) {
+  //   const response = await llm.getResponseFromLLM(ctx);
+  //   if (response !== null) {
+  //     reply(ctx, createAutoReplyMessage(response, ctx));
+  //     return true;
+  //   }
+  // }
   return false;
 }
 
@@ -188,7 +188,7 @@ async function chat(ctx: Context, chat: { id: string }) {
   // If no ticket has been sent yet, fetch from DB and set up spam timer
   if (cache.ticketSent[cache.userId] === undefined) {
     const ticket = await db.getTicketByUserId(chat.id, ctx.session.groupCategory);
-    processTicket(ticket, ctx, chat.id, autoReplyInfo);
+    await processTicket(ticket, ctx, chat.id, autoReplyInfo);
 
     // Prevent multiple notifications for a period defined by spam_time
     setTimeout(() => {
