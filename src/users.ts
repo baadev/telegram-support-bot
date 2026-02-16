@@ -8,6 +8,19 @@ import * as log from 'fancy-log'
 
 const TIME_BETWEEN_CONFIRMATION_MESSAGES = 86400000; // 24 hours
 
+async function getOrCreateTicket(
+  userId: string,
+  category: string | null,
+  messenger: Messenger | null,
+): Promise<ISupportee | null> {
+  let ticket = await db.getTicketByUserId(userId, category);
+  if (!ticket) {
+    await db.add(userId, 'open', category, messenger || Messenger.TELEGRAM);
+    ticket = await db.getTicketByUserId(userId, category);
+  }
+  return ticket;
+}
+
 /**
  * Generates a ticket message.
  *
@@ -92,12 +105,19 @@ async function autoReply(ctx: Context): Promise<boolean> {
  * @param autoReplyInfo - Optional auto-reply info.
  */
 async function processTicket(
-  ticket: ISupportee,
+  ticket: ISupportee | null,
   ctx: Context,
   chatId: string,
   autoReplyInfo?: string,
 ) {
   const { config } = cache;
+  if (!ticket) {
+    log.error(`Could not process ticket: no ticket found for user ${ctx.message.from.id}.`);
+    return;
+  }
+
+  const ticketMessenger = ticket.messenger || ctx.messenger || Messenger.TELEGRAM;
+
   // Send confirmation if applicable
   if (
     !autoReplyInfo &&
@@ -112,7 +132,7 @@ async function processTicket(
       (config.show_user_ticket
         ? `${config.language.ticket} #T${ticket.ticketId.toString().padStart(6, '0')}`
         : '');
-    sendMessage(chatId, ticket.messenger, confirmationMsg);
+    sendMessage(chatId, ticketMessenger, confirmationMsg);
   }
 
   // Send ticket message to staff chat
@@ -155,7 +175,7 @@ async function processTicket(
 
     sendMessage(
       ctx.session.group,
-      ticket.messenger,
+      ticketMessenger,
       formatMessageAsTicket(
         ticket.ticketId,
         ctx,
@@ -187,7 +207,11 @@ async function chat(ctx: Context, chat: { id: string }) {
 
   // If no ticket has been sent yet, fetch from DB and set up spam timer
   if (cache.ticketSent[cache.userId] === undefined) {
-    const ticket = await db.getTicketByUserId(chat.id, ctx.session.groupCategory);
+    const ticket = await getOrCreateTicket(chat.id, ctx.session.groupCategory, ctx.messenger);
+    if (!ticket) {
+      log.error(`No ticket found for user ${chat.id}; skipping ticket processing.`);
+      return;
+    }
     await processTicket(ticket, ctx, chat.id, autoReplyInfo);
 
     // Prevent multiple notifications for a period defined by spam_time
@@ -197,7 +221,11 @@ async function chat(ctx: Context, chat: { id: string }) {
     cache.ticketSent[cache.userId] = 0;
   } else if (cache.ticketSent[cache.userId] < config.spam_cant_msg) {
     cache.ticketSent[cache.userId]++;
-    const ticket = await db.getTicketByUserId(cache.userId, ctx.session.groupCategory);
+    const ticket = await getOrCreateTicket(cache.userId, ctx.session.groupCategory, ctx.messenger);
+    if (!ticket) {
+      log.error(`No ticket found for user ${cache.userId}; skipping spam-window forwarding.`);
+      return;
+    }
     sendMessage(
       config.staffchat_id,
       config.staffchat_type,
@@ -210,7 +238,7 @@ async function chat(ctx: Context, chat: { id: string }) {
     if (ctx.session.group && ctx.session.group !== config.staffchat_id) {
       sendMessage(
         ctx.session.group,
-        ticket.messenger,
+        ticket.messenger || ctx.messenger || Messenger.TELEGRAM,
         formatMessageAsTicket(
           ticket.ticketId,
           ctx,
@@ -220,11 +248,12 @@ async function chat(ctx: Context, chat: { id: string }) {
     }
   } else if (cache.ticketSent[cache.userId] === config.spam_cant_msg) {
     cache.ticketSent[cache.userId]++;
-    sendMessage(chat.id, ctx.messenger, config.language.blockedSpam);
+    sendMessage(chat.id, ctx.messenger || Messenger.TELEGRAM, config.language.blockedSpam);
   }
 
   // Log the ticket message for debugging
-  const ticket = await db.getTicketByUserId(cache.userId, ctx.session.groupCategory)
+  const ticket = await getOrCreateTicket(cache.userId, ctx.session.groupCategory, ctx.messenger)
+  if (!ticket) return;
   log.info(
     formatMessageAsTicket(
       ticket.ticketId,

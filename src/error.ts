@@ -91,7 +91,8 @@ function init(logs = true) {
   process.on('unhandledRejection', (err: any) => {
     rateLimit();
     log.info('=== UNHANDLED REJECTION ===');
-    fs.appendFile(debugFile, err + '\n', 'utf8', appendErr => {
+    const errorText = err?.stack || err?.message || err;
+    fs.appendFile(debugFile, errorText + '\n', 'utf8', appendErr => {
       if (appendErr) throw appendErr;
     });
     console.dir(`${new Date()}: ${err.stack}`);

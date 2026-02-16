@@ -90,7 +90,7 @@ const openCommand = (ctx: Context): void => {
 const closeCommand = (ctx: Context): void => {
   if (!ctx.session.admin) return;
   const groups: string[] = [];
-  const { categories, language } = cache.config;
+  const { categories } = cache.config;
 
   if (categories) {
     categories.forEach(category => {
@@ -104,9 +104,10 @@ const closeCommand = (ctx: Context): void => {
     });
   }
 
-  // Only process if the reply is to a bot message
-  if (!ctx.message.reply_to_message.from.is_bot) return;
-  const replyText = ctx.message.reply_to_message.text || ctx.message.reply_to_message.caption;
+  const replyMessage = ctx.message?.reply_to_message;
+  if (!replyMessage || !replyMessage.from?.is_bot) return;
+
+  const replyText = replyMessage.text || replyMessage.caption;
   if (!replyText) return;
   const ticketId = extractTicketId(replyText);
   if (!ticketId) return;
@@ -117,12 +118,21 @@ const closeCommand = (ctx: Context): void => {
       return;
     }
     let userId: any = null;
+    let category: string | number | null = null;
     tickets.forEach(ticket => {
       if (ticket.id.toString().padStart(6, '0') === ticketId) {
-        db.add(ticket.userid, 'closed', ticket.category, ctx.messenger);
+        userId = ticket.userid;
+        category = ticket.category;
       }
-      userId = ticket.userid;
     });
+
+    if (userId === null || userId === undefined) {
+      log.info(`Close command: ticket #T${ticketId} not found for available groups`);
+      return;
+    }
+
+    db.add(userId, 'closed', category, ctx.messenger);
+
     const paddedTicket = ticketId.toString().padStart(6, '0');
     middleware.reply(ctx, `${cache.config.language.ticket} #T${paddedTicket} ${cache.config.language.closed}`);
     middleware.sendMessage(
@@ -143,7 +153,7 @@ const closeCommand = (ctx: Context): void => {
  */
 const banCommand = (ctx: Context): void => {
   if (!ctx.session.admin) return;
-  const replyText = ctx.message.reply_to_message.text;
+  const replyText = ctx.message?.reply_to_message?.text;
   if (!replyText) return;
   const ticketId = extractTicketId(replyText);
   if (!ticketId) return;
@@ -164,7 +174,7 @@ const banCommand = (ctx: Context): void => {
  */
 const reopenCommand = (ctx: Context): void => {
   if (!ctx.session.admin) return;
-  const replyText = ctx.message.reply_to_message.text;
+  const replyText = ctx.message?.reply_to_message?.text;
   if (!replyText) return;
   const ticketId = extractTicketId(replyText);
   if (!ticketId) return;
@@ -185,7 +195,7 @@ const reopenCommand = (ctx: Context): void => {
  */
 const unbanCommand = (ctx: Context): void => {
   if (!ctx.session.admin) return;
-  const replyText = ctx.message.reply_to_message.text;
+  const replyText = ctx.message?.reply_to_message?.text;
   if (!replyText) return;
   const ticketId = extractTicketId(replyText);
   if (!ticketId) return;

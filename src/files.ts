@@ -1,7 +1,7 @@
 import * as db from './db';
 import cache from './cache';
 import * as middleware from './middleware';
-import { Addon, Context, ModeData } from './interfaces';
+import { Addon, Context, Messenger, ModeData } from './interfaces';
 import { ISupportee } from './db';
 
 /**
@@ -177,7 +177,11 @@ async function fileHandler(type: string, bot: Addon, ctx: Context) {
     if (!nameMatch) return;
     confirmationMessage = `${config.language.file_sent} ${nameMatch[1]}`;
   }
-  middleware.sendMessage(ctx.chat.id, ticket.messenger, confirmationMessage);
+  middleware.sendMessage(
+    ctx.chat.id,
+    ticket.messenger || ctx.messenger || Messenger.TELEGRAM,
+    confirmationMessage,
+  );
 };
 
 /**
@@ -187,10 +191,16 @@ async function fileHandler(type: string, bot: Addon, ctx: Context) {
  * @param callback - Callback function receiving user information.
  */
 async function forwardFile(ctx: Context) {
-  const ticket = await db.getTicketByUserId(ctx.message.from.id, ctx.session.groupCategory);
+  let ticket = await db.getTicketByUserId(ctx.message.from.id, ctx.session.groupCategory);
   let ok = false;
   if (!ticket || !ticket.status || ticket.status === 'closed') {
-    db.add(ctx.message.from.id, 'open', null, ctx.messenger);
+    await db.add(
+      ctx.message.from.id,
+      'open',
+      ctx.session.groupCategory,
+      ctx.messenger || Messenger.TELEGRAM,
+    );
+    ticket = await db.getTicketByUserId(ctx.message.from.id, ctx.session.groupCategory);
     ok = true;
   }
   if (ok || (ticket && ticket.status !== 'banned')) {
@@ -205,7 +215,12 @@ async function forwardFile(ctx: Context) {
       return forwardHandler(ctx);
     } else if (cache.ticketSent[cache.userId] === cache.config.spam_cant_msg) {
       cache.ticketSent[cache.userId]++;
-      middleware.sendMessage(ctx.chat.id, ticket.messenger, cache.config.language.blockedSpam, {});
+      middleware.sendMessage(
+        ctx.chat.id,
+        ticket?.messenger || ctx.messenger || Messenger.TELEGRAM,
+        cache.config.language.blockedSpam,
+        {},
+      );
     }
   }
 };

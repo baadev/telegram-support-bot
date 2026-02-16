@@ -81,7 +81,21 @@ async function sendMessage (
   msg: string,
   extra: any = { parse_mode: cache.config.parse_mode }
 ): Promise<string | null> {
-  const messengerType = messenger as Messenger;
+  const hasKnownMessenger =
+    messenger === Messenger.TELEGRAM ||
+    messenger === Messenger.SIGNAL ||
+    messenger === Messenger.WEB;
+  const inferredMessenger =
+    typeof id === 'string' && id.startsWith('WEB')
+      ? Messenger.WEB
+      : Messenger.TELEGRAM;
+  const messengerType = hasKnownMessenger
+    ? (messenger as Messenger)
+    : inferredMessenger;
+
+  if (!hasKnownMessenger) {
+    log.error(`Invalid messenger type: ${messenger}. Fallback to ${messengerType}.`);
+  }
   // Remove extra spaces
   const cleanedMsg = (msg ?? '').toString().replace(/ {2,}/g, ' ');
   const { options, parseMode } = normalizeExtra(extra);
@@ -139,7 +153,15 @@ const reply = (
   msgText: string,
   extra: any = { parse_mode: cache.config.parse_mode }
 ): void => {
-  sendMessage(ctx.message.chat.id, ctx.messenger, msgText, extra);
+  sendMessage(
+    ctx.message.chat.id,
+    ctx.messenger ||
+      (ctx.message?.chat?.id?.toString()?.startsWith('WEB')
+        ? Messenger.WEB
+        : Messenger.TELEGRAM),
+    msgText,
+    extra,
+  );
 };
 
 export { strictEscape, sendMessage, reply };
