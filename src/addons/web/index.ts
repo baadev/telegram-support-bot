@@ -26,9 +26,16 @@ const init = function(bot: TelegramAddon) {
     const server = http.createServer(app);
 
     const {Server} = require('socket.io');
-    const io = new Server(server);
+    const io = new Server(server, {
+      maxHttpBufferSize: 10_000,
+    });
     cache.io = io;
     app.use(limiter);
+    app.use((_req: any, res: any, next: any) => {
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Referrer-Policy', 'no-referrer');
+      next();
+    });
 
     // app.get('/', (req, res) => {
     //   res.writeHead(200, {'Content-Type': 'text/html'});
@@ -50,17 +57,22 @@ const init = function(bot: TelegramAddon) {
         id: string;
       }) => {
           socket.on('chat', (msg: string) => {
-            socket.emit('chat_user', msg);
+            const text = typeof msg === 'string' ? msg.trim() : '';
+            if (!text || text.length > 2000) {
+              socket.emit('chat_staff', 'Message must be between 1 and 2000 characters.');
+              return;
+            }
+            socket.emit('chat_user', text);
             fakectx.message.from.id = 'WEB' + socket.id;
             fakectx.message.chat.id = 'WEB' + socket.id;
-            fakectx.message.text = msg;
+            fakectx.message.text = text;
             ticketHandler(bot, fakectx);
           });
           socket.on('disconnect', () => log.info('Disconnected'));
         },
     );
 
-    server.listen(8080, () => log.info(`Server started on port ${port}`));
+    server.listen(port, () => log.info(`Server started on port ${port}`));
   }
 };
 

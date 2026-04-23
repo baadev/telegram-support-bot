@@ -187,7 +187,13 @@
       msgdiv.className = 'msg-full';
       var item = document.createElement('p');
       item.className = 'msg ' + (type == 'user' ? 'msg-you' : 'msg-other');
-      item.innerHTML = msg + '<div class="time">' + time + '</div>';
+      var text = document.createElement('span');
+      text.textContent = String(msg || '');
+      var timeNode = document.createElement('div');
+      timeNode.className = 'time';
+      timeNode.textContent = time;
+      item.appendChild(text);
+      item.appendChild(timeNode);
       msgdiv.appendChild(item);
       messages.appendChild(msgdiv);
       messages.scrollTop = messages.scrollHeight;

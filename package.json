@@ -25,11 +25,11 @@
     },
     "dependencies": {
         "@grammyjs/transformer-throttler": "^1.2.1",
-        "axios": "^1.11.0",
+        "axios": "^1.15.2",
         "chalk": "^5.6.0",
         "debug": "^4.4.1",
-        "express": "^5.1.0",
-        "express-rate-limit": "^8.0.1",
+        "express": "^5.2.1",
+        "express-rate-limit": "^8.3.2",
         "fancy-log": "^2.0.0",
         "grammy": "^1.38.1",
         "llamaindex": "^0.11.27",
@@ -38,10 +38,35 @@
         "node-fetch": ">=3.3.0",
         "node-gyp": "^11.3.0",
         "sandwich-stream": "^2.0.2",
-        "socket.io": "^4.5.4",
+        "socket.io": "^4.8.3",
         "ws": "^8.13.0",
-        "yaml": "^2.8.1",
+        "yaml": "^2.8.3",
         "typescript": "^5.9.2"
+    },
+    "overrides": {
+        "ajv": "^6.14.0",
+        "body-parser": "^2.2.2",
+        "brace-expansion": "^2.0.3",
+        "flatted": "^3.4.2",
+        "follow-redirects": "^1.15.12",
+        "glob": "^13.0.6",
+        "handlebars": "^4.7.9",
+        "js-yaml": "^4.1.1",
+        "lodash": "^4.18.1",
+        "minimatch": "^10.2.5",
+        "mocha": {
+            "diff": "^8.0.3",
+            "serialize-javascript": "^7.0.5"
+        },
+        "path-to-regexp": "^8.4.2",
+        "picomatch": "^4.0.4",
+        "qs": "^6.15.1",
+        "socket.io-parser": "^4.2.6",
+        "tar": "^7.5.13",
+        "tar-fs": "^3.1.2",
+        "ts-node": {
+            "diff": "^4.0.4"
+        }
     },
     "optionalDependencies": {
         "better-sqlite3": "^12.2.0"
