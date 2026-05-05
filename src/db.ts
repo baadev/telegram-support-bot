@@ -155,7 +155,7 @@ export const addIdAndName = async (
     $set: { name },
   };
   return await Supportee.findOneAndUpdate(query, update, {
-    new: true,
+    returnDocument: 'after',
     upsert: true,
   });
 };
